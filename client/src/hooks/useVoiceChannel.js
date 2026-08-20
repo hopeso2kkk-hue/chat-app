@@ -143,7 +143,22 @@ export function useVoiceChannel() {
       if (e.candidate) socket.emit('server:voice-ice', { channelId, to: peerId, candidate: e.candidate })
     }
     pc.ontrack = (e) => {
-      setStreams((prev) => (prev[peerId] === e.streams[0] ? prev : { ...prev, [peerId]: e.streams[0] }))
+      const track = e.track
+      setStreams((prev) => {
+        const existing = prev[peerId]
+        if (existing && existing.getTracks().includes(track)) return prev
+        const stream = existing || new MediaStream()
+        stream.addTrack(track)
+        return { ...prev, [peerId]: stream }
+      })
+      track.onended = () => {
+        setStreams((prev) => {
+          const s = prev[peerId]
+          if (!s) return prev
+          s.removeTrack(track)
+          return { ...prev }
+        })
+      }
     }
     pcsRef.current.set(peerId, pc)
     return pc

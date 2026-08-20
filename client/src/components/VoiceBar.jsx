@@ -14,7 +14,9 @@ export default function VoiceBar({
   onToggleSetting,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const screenStreams = Object.entries(streams).filter(([, s]) => s.getVideoTracks().length > 0)
+  const screenStreams = Object.entries(streams).filter(([, s]) =>
+    s.getVideoTracks().some((t) => t.readyState === 'live')
+  )
 
   return (
     <>
@@ -26,6 +28,7 @@ export default function VoiceBar({
               className="screen-share-video"
               autoPlay
               playsInline
+              muted
               ref={(el) => {
                 if (el && el.srcObject !== stream) {
                   el.srcObject = stream

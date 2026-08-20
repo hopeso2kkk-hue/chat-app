@@ -225,6 +225,9 @@ button {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .chat-title {
@@ -308,12 +311,6 @@ button {
 }
 
 /* ===== Chamadas ===== */
-.chat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .call-start {
   font-size: 16px;
   padding: 6px 10px;
@@ -434,4 +431,51 @@ button {
 .call-btn.round.on {
   background: var(--green);
   color: #fff;
+}
+
+/* ===== Mensagens de áudio ===== */
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mic-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mic-btn:hover {
+  background: var(--bg-light);
+}
+
+.mic-btn.recording {
+  background: var(--red);
+  color: #fff;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(218, 55, 60, 0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(218, 55, 60, 0); }
+}
+
+.rec-timer {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.msg-audio {
+  max-width: 280px;
+  height: 40px;
+  border-radius: 8px;
 }

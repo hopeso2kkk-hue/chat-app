@@ -12,17 +12,31 @@ export default function App() {
   const [selected, setSelected] = useState(null)
   const [messages, setMessages] = useState({})
   const meRef = useRef(null)
+  const myNameRef = useRef(null)
   const call = useWebRTC()
 
-  function handleLogin(name) {
+  function login(name) {
+    myNameRef.current = name
+    localStorage.setItem('chatName', name)
     socket.emit('user:login', name)
   }
 
   useEffect(() => {
+    const saved = localStorage.getItem('chatName')
+    if (saved) {
+      myNameRef.current = saved
+      socket.emit('user:login', saved)
+    }
+  }, [])
+
+  useEffect(() => {
+    socket.on('connect', () => {
+      if (myNameRef.current) socket.emit('user:login', myNameRef.current)
+    })
+
     socket.on('user:login-ok', (user) => {
       setMe(user)
       meRef.current = user
-      localStorage.setItem('chatUser', user.id)
     })
 
     socket.on('users:update', (list) => setUsers(list))
@@ -35,20 +49,28 @@ export default function App() {
     })
 
     return () => {
+      socket.off('connect')
       socket.off('user:login-ok')
       socket.off('users:update')
       socket.off('message:receive')
     }
   }, [])
 
-  function handleSend(to, text) {
-    const msg = { from: me.id, to, text, time: Date.now() }
-    socket.emit('message:send', { to, text })
+  function handleSend(to, payload) {
+    const msg = {
+      from: me.id,
+      to,
+      type: payload.type || 'text',
+      text: payload.text || null,
+      audio: payload.audio || null,
+      time: Date.now(),
+    }
+    socket.emit('message:send', { to, type: msg.type, text: msg.text, audio: msg.audio })
     setMessages((prev) => ({ ...prev, [to]: [...(prev[to] || []), msg] }))
   }
 
   if (!me) {
-    return <Login onLogin={handleLogin} />
+    return <Login onLogin={login} />
   }
 
   const peer = users.find((u) => u.id === selected)

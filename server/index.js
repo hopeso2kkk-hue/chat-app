@@ -41,8 +41,8 @@ io.on("connection", (socket) => {
     console.log(`${name} entrou. Online: ${users.size}`);
   });
 
-  // 2) Mensagem de um usuário para outro
-  socket.on("message:send", ({ to, text }) => {
+  // 2) Mensagem de um usuário para outro (texto ou áudio)
+  socket.on("message:send", ({ to, text, audio, type }) => {
     const from = socket.data.user;
     if (!from) return;
 
@@ -52,13 +52,15 @@ io.on("connection", (socket) => {
     const message = {
       from: from.id,
       to,
-      text,
+      type: type || "text",
+      text: text || null,
+      audio: audio || null,
       time: Date.now(),
     };
 
     // Entrega para o destinatário
     io.to(to).emit("message:receive", message);
-    console.log(`DM de ${from.name} -> ${recipient.name}: ${text}`);
+    console.log(`DM de ${from.name} -> ${recipient.name}: [${message.type}]`);
   });
 
   // 3) Chamadas (WebRTC signaling) - o servidor só repassa o sinal

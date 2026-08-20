@@ -7,13 +7,18 @@ export default function VoiceBar({
   muted,
   settings,
   screenActive,
+  screenQuality,
   onToggleMute,
-  onToggleScreen,
+  onStartScreen,
+  onStopScreen,
+  onSetScreenQuality,
   onLeave,
   onSetSuppression,
   onToggleSetting,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [screenOpen, setScreenOpen] = useState(false)
+  const QUALITIES = ['480p', '720p', '1080p', '1440p']
   const screenStreams = Object.entries(streams).filter(([, s]) =>
     s.getVideoTracks().some((t) => t.readyState === 'live')
   )
@@ -99,8 +104,8 @@ export default function VoiceBar({
           </button>
           <button
             className={`call-btn round ${screenActive ? 'on' : ''}`}
-            onClick={onToggleScreen}
-            title={screenActive ? 'Parar de transmitir tela' : 'Transmitir tela'}
+            onClick={() => setScreenOpen((v) => !v)}
+            title={screenActive ? 'Transmissão de tela (clique para opções)' : 'Transmitir tela'}
           >
             🖥️
           </button>
@@ -108,6 +113,37 @@ export default function VoiceBar({
             📞
           </button>
         </div>
+        {screenOpen && (
+          <div className="screen-quality-menu">
+            <div className="screen-quality-title">
+              {screenActive ? 'Qualidade da transmissão' : 'Qualidade para transmitir'}
+            </div>
+            {QUALITIES.map((q) => (
+              <button
+                key={q}
+                className={`screen-quality-option ${screenQuality === q ? 'active' : ''}`}
+                onClick={() => {
+                  if (screenActive) onSetScreenQuality(q)
+                  else onStartScreen(q)
+                  setScreenOpen(false)
+                }}
+              >
+                {q}
+              </button>
+            ))}
+            {screenActive && (
+              <button
+                className="screen-quality-stop"
+                onClick={() => {
+                  onStopScreen()
+                  setScreenOpen(false)
+                }}
+              >
+                Parar transmissão
+              </button>
+            )}
+          </div>
+        )}
         {settingsOpen && (
           <div className="voice-settings">
             <div className="voice-settings-title">Opções de voz</div>

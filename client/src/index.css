@@ -607,6 +607,62 @@ button {
   opacity: 1;
 }
 
+.screen-quality-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 16px;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+  z-index: 35;
+}
+
+.screen-quality-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 4px 6px;
+}
+
+.screen-quality-option {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.screen-quality-option:hover {
+  background: var(--bg);
+}
+
+.screen-quality-option.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.screen-quality-stop {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--red);
+}
+
+.screen-quality-stop:hover {
+  background: var(--red);
+  opacity: 0.9;
+}
+
 /* ===== Opções de voz ===== */
 .voice-settings {
   position: absolute;

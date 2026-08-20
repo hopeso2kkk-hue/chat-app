@@ -8,6 +8,13 @@ import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.w
 
 const ICE_SERVERS = [TURN_CONFIG]
 
+const SCREEN_QUALITIES = {
+  '480p': { width: { ideal: 854, max: 854 }, height: { ideal: 480, max: 480 } },
+  '720p': { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } },
+  '1080p': { width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 } },
+  '1440p': { width: { ideal: 2560, max: 2560 }, height: { ideal: 1440, max: 1440 } },
+}
+
 // Canais de voz de servidor: cada membro conecta uma RTCPeerConnection a
 // cada outro membro (mesh). Quem entra espera ofertas dos que já estão;
 // quem já está chama o novato. Suporta supressão de ruído (Krisp/RNNoise)
@@ -29,6 +36,12 @@ export function useVoiceChannel() {
   const [streams, setStreams] = useState({}) // peerId -> MediaStream
   const [muted, setMuted] = useState(false)
   const [screenActive, setScreenActive] = useState(false)
+  const [screenQuality, setScreenQualityState] = useState('1080p')
+  const screenQualityRef = useRef(screenQuality)
+
+  useEffect(() => {
+    screenQualityRef.current = screenQuality
+  }, [screenQuality])
   const [settings, setSettings] = useState({
     suppression: 'standard',
     echoCancellation: true,
@@ -208,29 +221,59 @@ export function useVoiceChannel() {
     }
   }, [renegotiatePeer])
 
-  const startScreen = useCallback(async () => {
-    if (screenTrackRef.current) return
-    let display
-    try {
-      display = await navigator.mediaDevices.getDisplayMedia({ video: true })
-    } catch {
-      return
-    }
-    const videoTrack = display.getVideoTracks()[0]
-    if (!videoTrack) return
-    screenTrackRef.current = videoTrack
-    videoTrack.onended = () => stopScreen()
-    const local = await ensureLocal()
-    for (const peerId of pcsRef.current.keys()) {
-      const pc = pcsRef.current.get(peerId)
-      const sender = pc.addTrack(videoTrack, local)
-      screenSendersRef.current.set(peerId, sender)
-    }
-    setScreenActive(true)
-    for (const peerId of pcsRef.current.keys()) {
-      await renegotiatePeer(peerId)
-    }
-  }, [ensureLocal, renegotiatePeer, stopScreen])
+  const applyScreenQuality = useCallback((quality) => {
+    const track = screenTrackRef.current
+    if (!track) return
+    const preset = SCREEN_QUALITIES[quality] || SCREEN_QUALITIES['1080p']
+    track.applyConstraints({ width: preset.width, height: preset.height, frameRate: { max: 60 } }).catch(() => {})
+  }, [])
+
+  const startScreen = useCallback(
+    async (quality) => {
+      if (screenTrackRef.current) return
+      let display
+      try {
+        display = await navigator.mediaDevices.getDisplayMedia({ video: true })
+      } catch {
+        return
+      }
+      const videoTrack = display.getVideoTracks()[0]
+      if (!videoTrack) return
+      const q = SCREEN_QUALITIES[quality] ? quality : screenQualityRef.current
+      screenQualityRef.current = q
+      setScreenQualityState(q)
+      const preset = SCREEN_QUALITIES[q]
+      try {
+        await videoTrack.applyConstraints({
+          width: preset.width,
+          height: preset.height,
+          frameRate: { max: 60 },
+        })
+      } catch {}
+      screenTrackRef.current = videoTrack
+      videoTrack.onended = () => stopScreen()
+      const local = await ensureLocal()
+      for (const peerId of pcsRef.current.keys()) {
+        const pc = pcsRef.current.get(peerId)
+        const sender = pc.addTrack(videoTrack, local)
+        screenSendersRef.current.set(peerId, sender)
+      }
+      setScreenActive(true)
+      for (const peerId of pcsRef.current.keys()) {
+        await renegotiatePeer(peerId)
+      }
+    },
+    [ensureLocal, renegotiatePeer, stopScreen]
+  )
+
+  const setScreenQuality = useCallback(
+    (quality) => {
+      setScreenQualityState(quality)
+      screenQualityRef.current = quality
+      applyScreenQuality(quality)
+    },
+    [applyScreenQuality]
+  )
 
   const join = useCallback(
     async (serverId, channelId, channelName) => {
@@ -380,7 +423,9 @@ export function useVoiceChannel() {
     toggleMute,
     setSuppression,
     toggleSetting,
+    screenQuality,
     startScreen,
     stopScreen,
+    setScreenQuality,
   }
 }

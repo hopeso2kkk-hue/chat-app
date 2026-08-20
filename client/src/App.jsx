@@ -203,8 +203,11 @@ export default function App() {
           muted={voice.muted}
           settings={voice.settings}
           screenActive={voice.screenActive}
+          screenQuality={voice.screenQuality}
           onToggleMute={voice.toggleMute}
-          onToggleScreen={() => (voice.screenActive ? voice.stopScreen() : voice.startScreen())}
+          onStartScreen={voice.startScreen}
+          onStopScreen={voice.stopScreen}
+          onSetScreenQuality={voice.setScreenQuality}
           onLeave={voice.leave}
           onSetSuppression={voice.setSuppression}
           onToggleSetting={voice.toggleSetting}

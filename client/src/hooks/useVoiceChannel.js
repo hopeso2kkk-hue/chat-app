@@ -92,7 +92,7 @@ export function useVoiceChannel() {
         audio: {
           echoCancellation: s.echoCancellation,
           autoGainControl: s.autoGainControl,
-          noiseSuppression: s.suppression !== 'krisp' && s.suppression !== 'off',
+          noiseSuppression: s.suppression !== 'off',
         },
       })
     }
@@ -101,26 +101,36 @@ export function useVoiceChannel() {
 
   const setupKrisp = useCallback(async (raw) => {
     if (destRef.current) return destRef.current.stream
-    const ctx = new AudioContext({ sampleRate: 48000 })
-    await ctx.audioWorklet.addModule(rnnoiseWorkletPath)
-    const wasmBinary = await loadRnnoise({ url: rnnoiseWasmPath, simdUrl: rnnoiseSimdWasmPath })
-    const source = ctx.createMediaStreamSource(raw)
-    const node = new RnnoiseWorkletNode(ctx, { wasmBinary, maxChannels: 2 })
-    const dest = ctx.createMediaStreamDestination()
-    source.connect(node)
-    node.connect(dest)
-    audioCtxRef.current = ctx
-    sourceRef.current = source
-    nodeRef.current = node
-    destRef.current = dest
-    return dest.stream
+    try {
+      const ctx = new AudioContext({ sampleRate: 48000 })
+      await ctx.audioWorklet.addModule(rnnoiseWorkletPath)
+      const wasmBinary = await loadRnnoise({ url: rnnoiseWasmPath, simdUrl: rnnoiseSimdWasmPath })
+      const source = ctx.createMediaStreamSource(raw)
+      const node = new RnnoiseWorkletNode(ctx, { wasmBinary, maxChannels: 2 })
+      const dest = ctx.createMediaStreamDestination()
+      source.connect(node)
+      node.connect(dest)
+      audioCtxRef.current = ctx
+      sourceRef.current = source
+      nodeRef.current = node
+      destRef.current = dest
+      return dest.stream
+    } catch (err) {
+      console.error('Krisp/RNNoise falhou ao iniciar:', err)
+      throw err
+    }
   }, [])
 
   const ensureSend = useCallback(async () => {
     const raw = await ensureLocal()
     if (settingsRef.current.suppression === 'krisp') {
-      const dest = await setupKrisp(raw)
-      sendStreamRef.current = dest
+      try {
+        const dest = await setupKrisp(raw)
+        sendStreamRef.current = dest
+      } catch {
+        console.warn('RNNoise indisponível — usando microfone com supressão do navegador (fallback)')
+        sendStreamRef.current = raw
+      }
     } else {
       sendStreamRef.current = raw
     }

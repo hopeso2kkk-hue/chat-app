@@ -8,6 +8,7 @@ export default function VoiceBar({
   settings,
   screenActive,
   screenQuality,
+  me,
   onToggleMute,
   onStartScreen,
   onStopScreen,
@@ -82,7 +83,9 @@ export default function VoiceBar({
           <div className="voice-bar-members">
             {members.map((m) => (
               <span key={m.id} className="voice-member">
-                {m.name}
+                <span className="avatar small">{m.name.charAt(0).toUpperCase()}</span>
+                <span className="voice-member-name">{m.name}</span>
+                {m.id === me?.id && <span className="voice-member-you">(você)</span>}
               </span>
             ))}
           </div>

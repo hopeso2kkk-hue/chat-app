@@ -204,6 +204,7 @@ export default function App() {
           settings={voice.settings}
           screenActive={voice.screenActive}
           screenQuality={voice.screenQuality}
+          me={me}
           onToggleMute={voice.toggleMute}
           onStartScreen={voice.startScreen}
           onStopScreen={voice.stopScreen}

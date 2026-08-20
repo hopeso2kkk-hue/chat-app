@@ -310,6 +310,274 @@ button {
   font-size: 14px;
 }
 
+/* ===== Barra de servidores ===== */
+.server-bar {
+  width: 72px;
+  flex-shrink: 0;
+  background: var(--bg-dark);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  overflow-y: auto;
+}
+
+.server-bar-item {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-light);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-radius 0.15s, background 0.15s;
+}
+
+.server-bar-item:hover {
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.server-bar-item.active {
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.server-bar-item.add {
+  color: var(--green);
+  font-size: 24px;
+  background: none;
+  border: 1px dashed var(--border);
+}
+
+.server-bar-item.add:hover {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.server-bar-sep {
+  width: 32px;
+  height: 2px;
+  background: var(--bg-light);
+  border-radius: 2px;
+}
+
+/* ===== Painel do servidor ===== */
+.server-panel {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.server-panel-header {
+  padding: 16px 12px;
+  font-weight: 700;
+  font-size: 15px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.server-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.channel-group {
+  margin-bottom: 12px;
+}
+
+.channel-group-title {
+  width: 100%;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 6px 8px;
+}
+
+.channel-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.channel-item:hover {
+  background: var(--bg-light);
+  color: var(--text);
+}
+
+.channel-item.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.channel-item.active .channel-hash {
+  color: #fff;
+}
+
+.channel-hash {
+  width: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.chat-server-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.server-panel-footer {
+  padding: 10px 12px;
+  background: var(--bg-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-members {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.server-owner-badge {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.server-leave-btn {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--red);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.server-leave-btn:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+/* ===== Barra de voz ===== */
+.voice-bar {
+  position: fixed;
+  left: 312px;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.voice-audio-hidden {
+  display: none;
+}
+
+.voice-bar-title {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 1.5s infinite;
+}
+
+.voice-bar-members {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.voice-member {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-light);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.voice-bar-controls {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ===== Modal ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  width: 360px;
+  background: var(--bg-light);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.modal-card h2 {
+  font-size: 20px;
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-cancel {
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.modal-cancel:hover {
+  background: var(--bg);
+}
+
 /* ===== Chamadas ===== */
 .call-start {
   font-size: 16px;

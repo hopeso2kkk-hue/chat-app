@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { socket } from '../lib/socket'
+import { TURN_CONFIG } from '../config'
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  {
-    urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'],
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-]
+const ICE_SERVERS = [TURN_CONFIG]
 
 export function useWebRTC() {
   const pcRef = useRef(null)

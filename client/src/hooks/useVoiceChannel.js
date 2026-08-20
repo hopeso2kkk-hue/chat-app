@@ -1,38 +1,138 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { socket } from '../lib/socket'
 import { TURN_CONFIG } from '../config'
+import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppressor'
+import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
+import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
+import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
 
 const ICE_SERVERS = [TURN_CONFIG]
 
 // Canais de voz de servidor: cada membro conecta uma RTCPeerConnection a
 // cada outro membro (mesh). Quem entra espera ofertas dos que já estão;
-// quem já está chama o novato.
+// quem já está chama o novato. Suporta supressão de ruído (Krisp/RNNoise)
+// e transmissão de tela (com renegociação por par).
 export function useVoiceChannel() {
   const pcsRef = useRef(new Map()) // peerId -> RTCPeerConnection
-  const localRef = useRef(null)
+  const localRef = useRef(null) // microfone bruto
+  const sendStreamRef = useRef(null) // stream que vai para as PCs (pode ser processada)
   const channelRef = useRef(null) // { serverId, channelId, channelName }
+  const screenTrackRef = useRef(null)
+  const screenSendersRef = useRef(new Map()) // peerId -> RTCRtpSender (vídeo da tela)
+  const audioCtxRef = useRef(null)
+  const sourceRef = useRef(null)
+  const nodeRef = useRef(null)
+  const destRef = useRef(null)
+
   const [active, setActive] = useState(null)
   const [members, setMembers] = useState([])
   const [streams, setStreams] = useState({}) // peerId -> MediaStream
   const [muted, setMuted] = useState(false)
+  const [screenActive, setScreenActive] = useState(false)
+  const [settings, setSettings] = useState({
+    suppression: 'standard',
+    echoCancellation: true,
+    autoGainControl: true,
+  })
+  const settingsRef = useRef(settings)
+
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
+
+  const teardownKrisp = useCallback(() => {
+    try {
+      nodeRef.current?.destroy?.()
+      sourceRef.current?.disconnect()
+      nodeRef.current?.disconnect()
+      destRef.current?.disconnect()
+    } catch {}
+    audioCtxRef.current?.close().catch(() => {})
+    audioCtxRef.current = null
+    sourceRef.current = null
+    nodeRef.current = null
+    destRef.current = null
+  }, [])
 
   const cleanup = useCallback(() => {
     pcsRef.current.forEach((pc) => pc.close())
     pcsRef.current = new Map()
     localRef.current?.getTracks().forEach((t) => t.stop())
     localRef.current = null
+    sendStreamRef.current = null
+    screenTrackRef.current?.stop()
+    screenTrackRef.current = null
+    screenSendersRef.current = new Map()
+    teardownKrisp()
     channelRef.current = null
     setMembers([])
     setStreams({})
     setActive(null)
     setMuted(false)
-  }, [])
+    setScreenActive(false)
+  }, [teardownKrisp])
 
   const ensureLocal = useCallback(async () => {
     if (!localRef.current) {
-      localRef.current = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const s = settingsRef.current
+      localRef.current = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: s.echoCancellation,
+          autoGainControl: s.autoGainControl,
+          noiseSuppression: s.suppression !== 'krisp' && s.suppression !== 'off',
+        },
+      })
     }
     return localRef.current
+  }, [])
+
+  const setupKrisp = useCallback(async (raw) => {
+    if (destRef.current) return destRef.current.stream
+    const ctx = new AudioContext({ sampleRate: 48000 })
+    await ctx.audioWorklet.addModule(rnnoiseWorkletPath)
+    const wasmBinary = await loadRnnoise({ url: rnnoiseWasmPath, simdUrl: rnnoiseSimdWasmPath })
+    const source = ctx.createMediaStreamSource(raw)
+    const node = new RnnoiseWorkletNode(ctx, { wasmBinary, maxChannels: 2 })
+    const dest = ctx.createMediaStreamDestination()
+    source.connect(node)
+    node.connect(dest)
+    audioCtxRef.current = ctx
+    sourceRef.current = source
+    nodeRef.current = node
+    destRef.current = dest
+    return dest.stream
+  }, [])
+
+  const ensureSend = useCallback(async () => {
+    const raw = await ensureLocal()
+    if (settingsRef.current.suppression === 'krisp') {
+      const dest = await setupKrisp(raw)
+      sendStreamRef.current = dest
+    } else {
+      sendStreamRef.current = raw
+    }
+    return sendStreamRef.current
+  }, [ensureLocal, setupKrisp])
+
+  const addLocalTracks = useCallback((pc) => {
+    const stream = sendStreamRef.current
+    if (!stream) return
+    stream.getTracks().forEach((t) => {
+      if (!pc.getSenders().some((s) => s.track === t)) pc.addTrack(t, stream)
+    })
+  }, [])
+
+  const applyToPcs = useCallback(async () => {
+    const audioTrack = sendStreamRef.current?.getAudioTracks()[0]
+    if (!audioTrack) return
+    for (const pc of pcsRef.current.values()) {
+      const sender = pc.getSenders().find((s) => s.track && s.track.kind === 'audio')
+      if (sender) {
+        try {
+          await sender.replaceTrack(audioTrack)
+        } catch {}
+      }
+    }
   }, [])
 
   const createPC = useCallback((peerId, channelId) => {
@@ -53,15 +153,69 @@ export function useVoiceChannel() {
     async (peerId, channelId) => {
       const pc = createPC(peerId, channelId)
       try {
-        const stream = await ensureLocal()
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream))
+        await ensureSend()
+        addLocalTracks(pc)
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
         socket.emit('server:voice-offer', { channelId, to: peerId, offer })
       } catch {}
     },
-    [createPC, ensureLocal]
+    [createPC, ensureSend, addLocalTracks]
   )
+
+  const renegotiatePeer = useCallback(async (peerId) => {
+    const pc = pcsRef.current.get(peerId)
+    const channelId = channelRef.current?.channelId
+    if (!pc || !channelId) return
+    try {
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      socket.emit('server:voice-offer', { channelId, to: peerId, offer })
+    } catch {}
+  }, [])
+
+  const stopScreen = useCallback(async () => {
+    const videoTrack = screenTrackRef.current
+    screenTrackRef.current = null
+    for (const [peerId, sender] of screenSendersRef.current) {
+      const pc = pcsRef.current.get(peerId)
+      if (pc) {
+        try {
+          pc.removeTrack(sender)
+        } catch {}
+      }
+    }
+    screenSendersRef.current = new Map()
+    videoTrack?.stop()
+    setScreenActive(false)
+    for (const peerId of pcsRef.current.keys()) {
+      await renegotiatePeer(peerId)
+    }
+  }, [renegotiatePeer])
+
+  const startScreen = useCallback(async () => {
+    if (screenTrackRef.current) return
+    let display
+    try {
+      display = await navigator.mediaDevices.getDisplayMedia({ video: true })
+    } catch {
+      return
+    }
+    const videoTrack = display.getVideoTracks()[0]
+    if (!videoTrack) return
+    screenTrackRef.current = videoTrack
+    videoTrack.onended = () => stopScreen()
+    const local = await ensureLocal()
+    for (const peerId of pcsRef.current.keys()) {
+      const pc = pcsRef.current.get(peerId)
+      const sender = pc.addTrack(videoTrack, local)
+      screenSendersRef.current.set(peerId, sender)
+    }
+    setScreenActive(true)
+    for (const peerId of pcsRef.current.keys()) {
+      await renegotiatePeer(peerId)
+    }
+  }, [ensureLocal, renegotiatePeer, stopScreen])
 
   const join = useCallback(
     async (serverId, channelId, channelName) => {
@@ -71,7 +225,7 @@ export function useVoiceChannel() {
       }
       channelRef.current = { serverId, channelId, channelName }
       try {
-        await ensureLocal()
+        await ensureSend()
       } catch {
         channelRef.current = null
         setActive(null)
@@ -80,7 +234,7 @@ export function useVoiceChannel() {
       socket.emit('server:voice-join', { serverId, channelId })
       setActive({ serverId, channelId, channelName })
     },
-    [cleanup, ensureLocal]
+    [cleanup, ensureSend]
   )
 
   const leave = useCallback(() => {
@@ -95,6 +249,38 @@ export function useVoiceChannel() {
       const next = !prev
       localRef.current?.getAudioTracks().forEach((t) => (t.enabled = !next))
       return next
+    })
+  }, [])
+
+  const setSuppression = useCallback(
+    async (mode) => {
+      settingsRef.current = { ...settingsRef.current, suppression: mode }
+      setSettings(settingsRef.current)
+      try {
+        if (mode === 'krisp') {
+          const raw = await ensureLocal()
+          const dest = await setupKrisp(raw)
+          sendStreamRef.current = dest
+        } else {
+          teardownKrisp()
+          const raw = await ensureLocal()
+          sendStreamRef.current = raw
+        }
+        localRef.current?.getAudioTracks().forEach((t) => {
+          t.applyConstraints({ noiseSuppression: mode !== 'krisp' && mode !== 'off' }).catch(() => {})
+        })
+        await applyToPcs()
+      } catch {}
+    },
+    [ensureLocal, setupKrisp, teardownKrisp, applyToPcs]
+  )
+
+  const toggleSetting = useCallback((key) => {
+    const next = { ...settingsRef.current, [key]: !settingsRef.current[key] }
+    settingsRef.current = next
+    setSettings(next)
+    localRef.current?.getAudioTracks().forEach((t) => {
+      t.applyConstraints({ [key]: next[key] }).catch(() => {})
     })
   }, [])
 
@@ -125,6 +311,7 @@ export function useVoiceChannel() {
         pc.close()
         pcsRef.current.delete(id)
       }
+      screenSendersRef.current.delete(id)
     })
 
     socket.on('server:voice-offer', async ({ channelId, from, offer }) => {
@@ -132,8 +319,8 @@ export function useVoiceChannel() {
       const pc = createPC(from, channelId)
       try {
         await pc.setRemoteDescription(offer)
-        const stream = await ensureLocal()
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream))
+        await ensureSend()
+        addLocalTracks(pc)
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
         socket.emit('server:voice-answer', { channelId, to: from, answer })
@@ -162,9 +349,23 @@ export function useVoiceChannel() {
       socket.off('server:voice-ice')
       socket.off('disconnect')
     }
-  }, [cleanup, connectToPeer, createPC, ensureLocal])
+  }, [cleanup, connectToPeer, createPC, ensureSend, addLocalTracks])
 
   useEffect(() => () => cleanup(), [cleanup])
 
-  return { active, members, streams, muted, join, leave, toggleMute }
+  return {
+    active,
+    members,
+    streams,
+    muted,
+    settings,
+    screenActive,
+    join,
+    leave,
+    toggleMute,
+    setSuppression,
+    toggleSetting,
+    startScreen,
+    stopScreen,
+  }
 }

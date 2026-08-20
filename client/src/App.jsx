@@ -201,8 +201,13 @@ export default function App() {
           members={voice.members}
           streams={voice.streams}
           muted={voice.muted}
+          settings={voice.settings}
+          screenActive={voice.screenActive}
           onToggleMute={voice.toggleMute}
+          onToggleScreen={() => (voice.screenActive ? voice.stopScreen() : voice.startScreen())}
           onLeave={voice.leave}
+          onSetSuppression={voice.setSuppression}
+          onToggleSetting={voice.toggleSetting}
         />
       )}
       {showCreate && <CreateServerModal onClose={() => setShowCreate(false)} onCreate={createServer} />}

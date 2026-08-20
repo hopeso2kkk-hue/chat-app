@@ -13,13 +13,22 @@ export default function CallOverlay({
   onToggleMute,
   onToggleScreen,
 }) {
-  const remoteVideoRef = useRef(null)
+  const audioRef = useRef(null)
+  const videoRef = useRef(null)
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream
+    if (audioRef.current && remoteStream) {
+      audioRef.current.srcObject = remoteStream
+      audioRef.current.play().catch(() => {})
     }
   }, [remoteStream])
+
+  useEffect(() => {
+    if (videoRef.current && remoteStream) {
+      videoRef.current.srcObject = remoteStream
+      videoRef.current.play().catch(() => {})
+    }
+  }, [remoteStream, screenActive])
 
   if (incoming) {
     return (
@@ -41,9 +50,8 @@ export default function CallOverlay({
 
   return (
     <div className="call-overlay">
-      {remoteStream && screenActive && (
-        <video className="screen-video" ref={remoteVideoRef} autoPlay playsInline muted={false} />
-      )}
+      <audio ref={audioRef} autoPlay />
+      {screenActive && <video className="screen-video" ref={videoRef} autoPlay playsInline muted />}
       <div className="call-controls">
         <span className="call-peer">Chamada com {peerName}</span>
         <div className="call-buttons">

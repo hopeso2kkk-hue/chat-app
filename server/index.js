@@ -74,6 +74,12 @@ io.on("connection", (socket) => {
   socket.on("call:ice", ({ to, candidate }) => {
     io.to(to).emit("call:ice", { candidate });
   });
+  socket.on("call:renegotiate", ({ to, offer }) => {
+    io.to(to).emit("call:renegotiate", { from: socket.id, offer });
+  });
+  socket.on("call:renegotiate-answer", ({ to, answer }) => {
+    io.to(to).emit("call:renegotiate-answer", { answer });
+  });
   socket.on("call:end", ({ to }) => {
     io.to(to).emit("call:end");
   });

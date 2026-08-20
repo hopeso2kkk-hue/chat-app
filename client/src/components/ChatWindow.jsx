@@ -4,7 +4,7 @@ function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function ChatWindow({ peer, me, messages, onSend }) {
+export default function ChatWindow({ peer, me, messages, onSend, onCall }) {
   const [text, setText] = useState('')
   const bottomRef = useRef(null)
 
@@ -29,6 +29,9 @@ export default function ChatWindow({ peer, me, messages, onSend }) {
               <span className="avatar small">{peer.name.charAt(0).toUpperCase()}</span>
               {peer.name}
             </span>
+            <button className="call-btn call-start" onClick={() => onCall(peer.id)}>
+              📞
+            </button>
           </header>
 
           <div className="chat-messages">

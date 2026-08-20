@@ -61,7 +61,25 @@ io.on("connection", (socket) => {
     console.log(`DM de ${from.name} -> ${recipient.name}: ${text}`);
   });
 
-  // 3) Ao sair, remove da lista e avisa todos
+  // 3) Chamadas (WebRTC signaling) - o servidor só repassa o sinal
+  socket.on("call:offer", ({ to, offer }) => {
+    io.to(to).emit("call:offer", { from: socket.id, offer });
+    console.log(`Chamada de ${socket.data.user?.name} para ${to}`);
+  });
+  socket.on("call:answer", ({ to, answer }) => {
+    io.to(to).emit("call:answer", { answer });
+  });
+  socket.on("call:ice", ({ to, candidate }) => {
+    io.to(to).emit("call:ice", { candidate });
+  });
+  socket.on("call:end", ({ to }) => {
+    io.to(to).emit("call:end");
+  });
+  socket.on("call:decline", ({ to }) => {
+    io.to(to).emit("call:decline");
+  });
+
+  // 4) Ao sair, remove da lista e avisa todos
   socket.on("disconnect", () => {
     const user = socket.data.user;
     if (user) {

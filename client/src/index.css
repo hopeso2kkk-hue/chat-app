@@ -306,3 +306,132 @@ button {
 .chat-placeholder-sub {
   font-size: 14px;
 }
+
+/* ===== Chamadas ===== */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.call-start {
+  font-size: 16px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.call-start:hover {
+  background: var(--accent);
+}
+
+.call-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.call-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.call-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  background: rgba(0,0,0,0.35);
+  padding-bottom: 40px;
+}
+
+.screen-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+  background: #000;
+  z-index: -1;
+}
+
+.call-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.6);
+  padding: 16px 24px;
+  border-radius: 12px;
+}
+
+.call-peer {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.call-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.call-btn {
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.call-btn:hover {
+  background: var(--bg-light);
+}
+
+.call-btn.accept {
+  background: var(--green);
+  color: #fff;
+}
+
+.call-btn.decline,
+.call-btn.hangup {
+  background: var(--red);
+  color: #fff;
+}
+
+.call-btn.round {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-light);
+}
+
+.call-btn.round.off {
+  background: var(--red);
+  color: #fff;
+}
+
+.call-btn.round.on {
+  background: var(--green);
+  color: #fff;
+}

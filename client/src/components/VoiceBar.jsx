@@ -23,19 +23,36 @@ export default function VoiceBar({
       {screenStreams.length > 0 && (
         <div className="screen-share-area">
           {screenStreams.map(([peerId, stream]) => (
-            <video
-              key={peerId}
-              className="screen-share-video"
-              autoPlay
-              playsInline
-              muted
-              ref={(el) => {
-                if (el && el.srcObject !== stream) {
-                  el.srcObject = stream
-                  el.play().catch(() => {})
-                }
-              }}
-            />
+            <div key={peerId} className="screen-share-tile">
+              <video
+                className="screen-share-video"
+                autoPlay
+                playsInline
+                muted
+                ref={(el) => {
+                  if (el && el.srcObject !== stream) {
+                    el.srcObject = stream
+                    el.play().catch(() => {})
+                  }
+                }}
+                onClick={(e) => {
+                  const tile = e.currentTarget.closest('.screen-share-tile')
+                  if (document.fullscreenElement) document.exitFullscreen()
+                  else tile?.requestFullscreen?.()
+                }}
+              />
+              <button
+                className="screen-share-fullscreen"
+                title="Tela cheia"
+                onClick={(e) => {
+                  const tile = e.currentTarget.closest('.screen-share-tile')
+                  if (document.fullscreenElement) document.exitFullscreen()
+                  else tile?.requestFullscreen?.()
+                }}
+              >
+                ⛶
+              </button>
+            </div>
           ))}
         </div>
       )}

@@ -548,6 +548,13 @@ button {
   pointer-events: none;
 }
 
+.screen-share-tile {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
 .screen-share-video {
   width: 340px;
   max-width: 45vw;
@@ -556,6 +563,48 @@ button {
   background: #000;
   aspect-ratio: 16 / 9;
   object-fit: contain;
+  cursor: pointer;
+}
+
+.screen-share-tile:fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  border-radius: 0;
+}
+
+.screen-share-tile:fullscreen .screen-share-video {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  border: none;
+  border-radius: 0;
+  aspect-ratio: auto;
+}
+
+.screen-share-fullscreen {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.screen-share-tile:hover .screen-share-fullscreen,
+.screen-share-tile:fullscreen .screen-share-fullscreen {
+  opacity: 1;
 }
 
 /* ===== Opções de voz ===== */

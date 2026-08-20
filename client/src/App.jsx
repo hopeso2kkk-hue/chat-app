@@ -22,6 +22,7 @@ export default function App() {
   const [selectedChannelId, setSelectedChannelId] = useState(null)
   const [serverMessages, setServerMessages] = useState({})
   const [showCreate, setShowCreate] = useState(false)
+  const [voiceRooms, setVoiceRooms] = useState([])
   const meRef = useRef(null)
   const myNameRef = useRef(null)
   const call = useWebRTC()
@@ -78,6 +79,8 @@ export default function App() {
       }))
     })
 
+    socket.on('voice:rooms', (rooms) => setVoiceRooms(rooms))
+
     return () => {
       socket.off('connect')
       socket.off('user:login-ok')
@@ -87,6 +90,7 @@ export default function App() {
       socket.off('server:created')
       socket.off('server:members-update')
       socket.off('server:message')
+      socket.off('voice:rooms')
     }
   }, [])
 
@@ -161,6 +165,7 @@ export default function App() {
             server={server}
             selectedChannelId={selectedChannelId}
             voiceChannelId={voice.active?.channelId ?? null}
+            voiceRooms={voiceRooms}
             me={me}
             onSelectChannel={setSelectedChannelId}
             onJoinVoice={joinVoice}

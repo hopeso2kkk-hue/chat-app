@@ -440,6 +440,46 @@ button {
   flex-shrink: 0;
 }
 
+.voice-room-members {
+  padding: 2px 0 6px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.voice-room-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.voice-room-member:hover {
+  background: var(--bg-light);
+}
+
+.voice-room-member .avatar.small {
+  width: 22px;
+  height: 22px;
+  font-size: 10px;
+}
+
+.voice-room-member-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-room-member-you {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
 .chat-server-name {
   font-size: 12px;
   font-weight: 500;

@@ -4,6 +4,7 @@ export default function ServerPanel({
   server,
   selectedChannelId,
   voiceChannelId,
+  voiceRooms,
   me,
   onSelectChannel,
   onJoinVoice,
@@ -42,14 +43,27 @@ export default function ServerPanel({
           {voiceOpen &&
             voiceChannels.map((c) => {
               const joined = voiceChannelId === c.id
+              const roomMembers = voiceRooms.find((r) => r.channelId === c.id)?.members || []
               return (
-                <button
-                  key={c.id}
-                  className={`channel-item voice ${joined ? 'active' : ''}`}
-                  onClick={() => (joined ? onLeaveVoice() : onJoinVoice(c.id))}
-                >
-                  <span className="channel-hash">{joined ? '🔊' : '🔈'}</span> {c.name}
-                </button>
+                <div key={c.id}>
+                  <button
+                    className={`channel-item voice ${joined ? 'active' : ''}`}
+                    onClick={() => (joined ? onLeaveVoice() : onJoinVoice(c.id))}
+                  >
+                    <span className="channel-hash">{joined ? '🔊' : '🔈'}</span> {c.name}
+                  </button>
+                  {roomMembers.length > 0 && (
+                    <div className="voice-room-members">
+                      {roomMembers.map((m) => (
+                        <div key={m.id} className="voice-room-member">
+                          <span className="avatar small">{m.name.charAt(0).toUpperCase()}</span>
+                          <span className="voice-room-member-name">{m.name}</span>
+                          {m.id === me.id && <span className="voice-room-member-you">(você)</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )
             })}
         </div>

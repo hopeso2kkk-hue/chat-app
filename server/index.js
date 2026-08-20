@@ -65,6 +65,18 @@ function removeFromVoiceRooms(socketId) {
       io.to(channelId).emit("server:voice-member-left", { channelId, id: socketId });
     }
   }
+  emitVoiceRooms();
+}
+
+function emitVoiceRooms() {
+  const rooms = [...voiceRooms].map(([channelId, ids]) => ({
+    channelId,
+    members: [...ids]
+      .map((sid) => users.get(sid))
+      .filter(Boolean)
+      .map((u) => ({ id: u.id, name: u.name })),
+  }));
+  io.emit("voice:rooms", rooms);
 }
 
 io.on("connection", (socket) => {
@@ -211,6 +223,7 @@ io.on("connection", (socket) => {
     socket
       .to(channelId)
       .emit("server:voice-member-joined", { channelId, member: { id: from.id, name: from.name } });
+    emitVoiceRooms();
     console.log(`${from.name} entrou no canal de voz ${s.name}/${channel.name}`);
   });
 
@@ -219,6 +232,7 @@ io.on("connection", (socket) => {
     if (ids) ids.delete(socket.id);
     socket.leave(channelId);
     socket.to(channelId).emit("server:voice-member-left", { channelId, id: socket.id });
+    emitVoiceRooms();
   });
 
   socket.on("server:voice-offer", ({ channelId, to, offer }) => {

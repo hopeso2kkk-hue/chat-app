@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { socket } from '../lib/socket'
 import { TURN_CONFIG } from '../config'
-import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppressor'
-import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
-import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
-import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
+import { createNoiseSuppressionAudioWorklet } from '@workadventure/noise-suppression/audio-worklet'
 
 const ICE_SERVERS = [TURN_CONFIG]
 
@@ -17,7 +14,7 @@ const SCREEN_QUALITIES = {
 
 // Canais de voz de servidor: cada membro conecta uma RTCPeerConnection a
 // cada outro membro (mesh). Quem entra espera ofertas dos que já estão;
-// quem já está chama o novato. Suporta supressão de ruído (Krisp/RNNoise)
+// quem já está chama o novato. Suporta supressão de ruído (IA DTLN)
 // e transmissão de tela (com renegociação por par).
 export function useVoiceChannel() {
   const pcsRef = useRef(new Map()) // peerId -> RTCPeerConnection
@@ -28,8 +25,10 @@ export function useVoiceChannel() {
   const screenSendersRef = useRef(new Map()) // peerId -> RTCRtpSender (vídeo da tela)
   const audioCtxRef = useRef(null)
   const sourceRef = useRef(null)
-  const nodeRef = useRef(null)
   const destRef = useRef(null)
+  const krispSdkRef = useRef(null)
+  const krispFilterRef = useRef(null)
+  const dtlnWorkletRef = useRef(null)
 
   const [active, setActive] = useState(null)
   const [members, setMembers] = useState([])
@@ -55,15 +54,18 @@ export function useVoiceChannel() {
 
   const teardownKrisp = useCallback(() => {
     try {
-      nodeRef.current?.destroy?.()
+      krispFilterRef.current?.dispose?.()
+      dtlnWorkletRef.current?.dispose?.()
       sourceRef.current?.disconnect()
-      nodeRef.current?.disconnect()
       destRef.current?.disconnect()
     } catch {}
+    krispSdkRef.current?.dispose?.().catch?.(() => {})
+    krispSdkRef.current = null
+    krispFilterRef.current = null
+    dtlnWorkletRef.current = null
     audioCtxRef.current?.close().catch(() => {})
     audioCtxRef.current = null
     sourceRef.current = null
-    nodeRef.current = null
     destRef.current = null
   }, [])
 
@@ -101,22 +103,62 @@ export function useVoiceChannel() {
 
   const setupKrisp = useCallback(async (raw) => {
     if (destRef.current) return destRef.current.stream
+
+    // 1) Tenta o Krisp oficial (arquivos em public/krisp)
     try {
+      const sdkUrl = '/krisp/krispsdk.mjs'
+      const mod = await import(/* @vite-ignore */ sdkUrl)
+      const KrispSDK = mod.default || mod
+      if (!KrispSDK?.isSupported?.()) throw new Error('Krisp não suportado neste navegador')
+      const sdk = new KrispSDK({
+        params: {
+          debugLogs: false,
+          logProcessStats: false,
+          models: {
+            modelNC: '/krisp/models/model_nc_mq.kef',
+            model8: '/krisp/models/model_8.kef',
+          },
+        },
+      })
+      await sdk.init()
       const ctx = new AudioContext({ sampleRate: 48000 })
-      await ctx.audioWorklet.addModule(rnnoiseWorkletPath)
-      const wasmBinary = await loadRnnoise({ url: rnnoiseWasmPath, simdUrl: rnnoiseSimdWasmPath })
+      const filterNode = await sdk.createNoiseFilter(
+        ctx,
+        () => filterNode.enable(),
+        () => {}
+      )
       const source = ctx.createMediaStreamSource(raw)
-      const node = new RnnoiseWorkletNode(ctx, { wasmBinary, maxChannels: 2 })
       const dest = ctx.createMediaStreamDestination()
-      source.connect(node)
-      node.connect(dest)
+      source.connect(filterNode)
+      filterNode.connect(dest)
+      krispSdkRef.current = sdk
+      krispFilterRef.current = filterNode
       audioCtxRef.current = ctx
       sourceRef.current = source
-      nodeRef.current = node
       destRef.current = dest
+      console.log('Krisp oficial ativo')
       return dest.stream
     } catch (err) {
-      console.error('Krisp/RNNoise falhou ao iniciar:', err)
+      console.warn('Krisp oficial indisponível, usando IA DTLN:', err)
+    }
+
+    // 2) Fallback: IA DTLN (workadventure/noise-suppression)
+    try {
+      const ctx = new AudioContext({ sampleRate: 16000 })
+      await ctx.resume()
+      const source = ctx.createMediaStreamSource(raw)
+      const dest = ctx.createMediaStreamDestination()
+      const worklet = await createNoiseSuppressionAudioWorklet(ctx, { bypassUntilReady: true })
+      source.connect(worklet.node).connect(dest)
+      await worklet.ready
+      dtlnWorkletRef.current = worklet
+      audioCtxRef.current = ctx
+      sourceRef.current = source
+      destRef.current = dest
+      console.log('Supressão IA DTLN ativa')
+      return dest.stream
+    } catch (err) {
+      console.error('IA DTLN falhou ao iniciar:', err)
       throw err
     }
   }, [])
@@ -128,7 +170,7 @@ export function useVoiceChannel() {
         const dest = await setupKrisp(raw)
         sendStreamRef.current = dest
       } catch {
-        console.warn('RNNoise indisponível — usando microfone com supressão do navegador (fallback)')
+        console.warn('IA DTLN indisponível — usando microfone com supressão do navegador (fallback)')
         sendStreamRef.current = raw
       }
     } else {

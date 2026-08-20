@@ -153,7 +153,7 @@ export default function VoiceBar({
             <label className="voice-setting-row">
               <span>Supressão de ruído</span>
               <select value={settings.suppression} onChange={(e) => onSetSuppression(e.target.value)}>
-                <option value="krisp">Krisp (IA)</option>
+                <option value="krisp">IA (DTLN)</option>
                 <option value="standard">Padrão</option>
                 <option value="off">Desligado</option>
               </select>
